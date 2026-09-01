@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>机器鱼蓝牙控制终端</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #1a1e24; margin: 20px; display: flex; justify-content: center; }
+        .container { max-width: 850px; width: 100%; background: #2d3436; border-radius: 16px; padding: 20px 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        h1 { font-size: 22px; margin-top: 0; margin-bottom: 18px; color: #dfe6e9; display: flex; align-items: center; gap: 10px; }
+        .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 8px; margin-bottom: 16px; background: #3d3f42; padding: 12px 14px; border-radius: 12px; }
+        .toolbar label { font-weight: 500; font-size: 14px; color: #b2bec3; }
+        .toolbar select, .toolbar input { padding: 6px 10px; border: 1px solid #636e72; border-radius: 8px; background: #2d3436; color: #dfe6e9; font-size: 14px; }
+        .toolbar button { padding: 6px 16px; border: none; border-radius: 8px; background: #0984e3; color: white; font-weight: 500; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .toolbar button:hover { background: #0873c7; }
+        .toolbar button.danger { background: #e74c3c; }
+        .toolbar button.danger:hover { background: #c0392b; }
+        .toolbar button.secondary { background: #636e72; }
+        .toolbar button.secondary:hover { background: #4a5559; }
+        .toolbar button.select-btn { background: #00b894; }
+        .toolbar button.select-btn:hover { background: #00a381; }
+        .status-bar { font-size: 14px; margin: 6px 0 14px 0; padding: 8px 14px; border-radius: 8px; background: #3d3f42; color: #dfe6e9; }
+        .status-bar.error { background: #c0392b; color: #ecf0f1; }
+        .status-bar.success { background: #27ae60; color: #ecf0f1; }
+
+        /* 终端标题行（含自动滚动和帮助按钮） */
+        .terminal-header { display: flex; justify-content: space-between; align-items: center; margin: 12px 0 6px 0; }
+        .terminal-title { font-weight: 600; font-size: 15px; color: #b2bec3; }
+        .terminal-controls { display: flex; align-items: center; gap: 12px; }
+        .terminal-controls label { color: #b2bec3; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        .terminal-controls button.help-btn { background: #6c5ce7; color: white; border: none; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .terminal-controls button.help-btn:hover { background: #5a4bd1; }
+
+        /* 终端区域 */
+        .terminal {
+            background: #1e1f22;
+            border: 1px solid #3d3f42;
+            border-radius: 10px;
+            padding: 12px;
+            height: 280px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #dfe6e9;
+            line-height: 1.5;
+        }
+        .terminal .send { color: #74b9ff; }
+        .terminal .recv { color: #fdcb6e; }
+        .terminal .prefix { font-weight: bold; }
+
+        /* 预设指令按钮区 */
+        .cmd-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px 0; }
+        .cmd-buttons button { padding: 6px 16px; border: none; border-radius: 8px; background: #2d3436; color: #dfe6e9; font-weight: 500; font-size: 13px; cursor: pointer; transition: 0.2s; border: 1px solid #636e72; }
+        .cmd-buttons button:hover { background: #0984e3; border-color: #0984e3; }
+        .cmd-buttons button:active { transform: scale(0.95); }
+
+        /* 发送框 */
+        .send-area { height: 110px; border: 1px solid #3d3f42; border-radius: 10px; padding: 10px; background: #2d3436; color: #dfe6e9; font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; resize: vertical; width: 100%; margin-top: 4px; }
+        .options { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 10px 0 8px 0; }
+        .options label { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #b2bec3; cursor: pointer; }
+        .options button { padding: 6px 18px; border: none; border-radius: 8px; background: #0984e3; color: white; font-weight: 500; font-size: 14px; cursor: pointer; transition: 0.2s; }
+        .options button:hover { background: #0873c7; }
+        .options button.clear { background: #636e72; }
+        .options button.clear:hover { background: #4a5559; }
+
+        .footer { margin-top: 16px; font-size: 13px; color: #636e72; text-align: center; border-top: 1px solid #3d3f42; padding-top: 12px; }
+
+        /* 模态框 (帮助) */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #2d3436;
+            color: #dfe6e9;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            border-radius: 16px;
+            padding: 24px 30px;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+            position: relative;
+        }
+        .modal-box h2 { margin-top: 0; color: #74b9ff; }
+        .modal-box pre { background: #1e1f22; padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+        .modal-box .close-btn {
+            position: sticky;
+            float: right;
+            background: #e74c3c;
+            border: none;
+            color: white;
+            font-size: 20px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -8px;
+            margin-right: -8px;
+        }
+        .modal-box .close-btn:hover { background: #c0392b; }
+        .modal-box table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+        .modal-box th, .modal-box td { border: 1px solid #636e72; padding: 6px 10px; text-align: left; }
+        .modal-box th { background: #3d3f42; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e1f22; }
+        ::-webkit-scrollbar-thumb { background: #636e72; border-radius: 3px; }
+        @media (max-width: 600px) { .container { padding: 12px; } .toolbar { flex-direction: column; align-items: stretch; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐟 机器鱼蓝牙控制终端</h1>
+
+        <!-- 工具栏 -->
+        <div class="toolbar">
+            <label for="portSelect">端口</label>
+            <select id="portSelect" style="min-width:120px;"></select>
+            <button id="selectPortBtn" class="select-btn">🔌 选择端口</button>
+            <button id="refreshBtn" class="secondary">🔄 刷新</button>
+
+            <label for="baudSelect">波特率</label>
+            <select id="baudSelect">
+                <option value="9600" selected>9600</option>
+                <option value="115200">115200</option>
+                <option value="57600">57600</option>
+                <option value="38400">38400</option>
+            </select>
+
+            <button id="connectBtn">打开串口</button>
+        </div>
+
+        <!-- 状态 -->
+        <div id="statusBar" class="status-bar">未连接</div>
+
+        <!-- 终端标题（含自动滚动和帮助按钮） -->
+        <div class="terminal-header">
+            <span class="terminal-title">💬 交互终端</span>
+            <div class="terminal-controls">
+                <label><input type="checkbox" id="autoScroll" checked> 自动滚动</label>
+                <button class="help-btn" id="helpBtn">❓ 帮助</button>
+            </div>
+        </div>
+
+        <!-- 终端显示区域 -->
+        <div id="terminal" class="terminal"></div>
+
+        <!-- 快捷指令按钮 -->
+        <div class="cmd-buttons">
+            <button data-cmd="crawl">🐍 爬行</button>
+            <button data-cmd="tail">🦎 尾巴摆动</button>
+            <button data-cmd="reset">🔄 复位</button>
+            <button data-cmd="stop">⏹ 停止</button>
+            <button data-cmd="start">▶ 激活启动</button>
+        </div>
+
+        <!-- 发送框 -->
+        <div style="margin-top:8px; font-size:14px; color:#b2bec3;">📤 发送内容 (Ctrl+Enter 发送)</div>
+        <textarea id="sendArea" class="send-area" spellcheck="false"></textarea>
+
+        <!-- 选项和按钮 -->
+        <div class="options">
+            <label><input type="checkbox" id="appendNewline" checked> 末尾自动换行</label>
+            <button id="sendBtn">📤 发送</button>
+            <button id="clearBtn" class="clear">清空终端</button>
+        </div>
+
+        <div class="footer">
+            ⚡ 使用 Web Serial API (需要 Chrome/Edge 并启用 HTTPS 或 localhost)
+        </div>
+    </div>
+
+    <!-- 帮助模态框 -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal-box">
+            <button class="close-btn" id="helpCloseBtn">✕</button>
+            <h2>📖 指令格式说明</h2>
+            <h3>模式指令（控制运行模式）</h3>
+            <table>
+                <tr><th>指令</th><th>作用</th></tr>
+                <tr><td><code>START</code></td><td>使能运动，开始响应运动指令（上电默认为 STOP）</td></tr>
+                <tr><td><code>STOP</code></td><td>立即停止运动，忽略后续所有运动指令（舵机保持当前位置）</td></tr>
+                <tr><td><code>LOOP</code></td><td>进入循环模式：后续运动指令按顺序加入队列，并循环播放（新指令动态加入下一轮循环）</td></tr>
+                <tr><td><code>SYNC</code></td><td>进入同步模式：运动指令依次执行一次，执行后自动丢弃，支持无限指令流（队列空则停止）</td></tr>
+                <tr><td><code>RESET</code></td><td>清空队列、退出当前模式，2 秒内平滑回到初始角度（L1=90, R1=90, L2=120, R2=60, C=45），完成后自动 STOP</td></tr>
+            </table>
+            <p><strong>注意</strong>：切换模式（<code>LOOP</code>/<code>SYNC</code>/<code>RESET</code>）会自动清空之前队列。<code>RESET</code> 执行期间不响应其他指令。</p>
+
+            <h3>运动指令（设置舵机目标）</h3>
+            <p><strong>格式</strong>：<br>
+            <code>&lt;L1&gt; &lt;R1&gt; &lt;L2&gt; &lt;R2&gt; &lt;C&gt; &lt;duration&gt;</code><br>
+            例如：<code>90 90 120 60 45 1.0</code></p>
+            <table>
+                <tr><th>参数</th><th>范围</th><th>说明</th></tr>
+                <tr><td><code>L1, R1, L2, R2, C</code></td><td>0~180（整数）</td><td>各舵机目标角度</td></tr>
+                <tr><td><code>duration</code></td><td>0.1~10.0（小数或整数）</td><td>运动持续时间（秒）</td></tr>
+            </table>
+            <p><strong>行为</strong>：<br>
+            - 仅在 <code>START</code> 后且处于 <code>LOOP</code> 或 <code>SYNC</code> 模式下才被接受。<br>
+            - 指令加入队列，若当前无动作则立即开始执行。<br>
+            - 舵机将平滑插值到目标角度，指定时长内完成。</p>
+
+            <h3>反馈信息</h3>
+            <p>每个指令执行后，均会通过蓝牙（HC-05）返回状态提示（如 <code>Mode: LOOP</code>、<code>Command added, queue size: 3</code> 等），方便调试。</p>
+
+            <h4>📌 示例</h4>
+            <p><strong>向前爬动（LOOP循环）</strong>：</p>
+            <pre>START
+LOOP
+45 135 120 60 45 1.0
+45 135 30 150 45 1.0
+90 90 30 150 45 1.0
+90 90 120 60 45 1.0</pre>
+            <p><strong>尾巴摆动</strong>：</p>
+            <pre>START
+LOOP
+45 135 120 60 60 1.0
+45 135 30 150 30 1.0</pre>
+            <p><strong>复位</strong>：<code>RESET</code></p>
+            <p><strong>停止</strong>：<code>STOP</code></p>
+            <p><strong>激活启动</strong>：<code>START</code></p>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ---- DOM 引用 ----
+            const portSelect = document.getElementById('portSelect');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const selectPortBtn = document.getElementById('selectPortBtn');
+            const baudSelect = document.getElementById('baudSelect');
+            const connectBtn = document.getElementById('connectBtn');
+            const statusBar = document.getElementById('statusBar');
+            const terminal = document.getElementById('terminal');
+            const sendArea = document.getElementById('sendArea');
+            const appendNewline = document.getElementById('appendNewline');
+            const sendBtn = document.getElementById('sendBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const autoScroll = document.getElementById('autoScroll');
+            const helpBtn = document.getElementById('helpBtn');
+            const helpModal = document.getElementById('helpModal');
+            const helpCloseBtn = document.getElementById('helpCloseBtn');
+
+            // ---- 状态 ----
+            let port = null;
+            let reader = null;
+            let keepReading = false;
+
+            // ---- 预设指令 ----
+            const COMMANDS = {
+                crawl: `START
+LOOP
+45 135 120 60 45 1.0
+45 135 30 150 45 1.0
+90 90 30 150 45 1.0
+90 90 120 60 45 1.0`,
+                tail: `START
+LOOP
+45 135 120 60 60 1.0
+45 135 30 150 30 1.0`,
+                reset: 'RESET',
+                stop: 'STOP',
+                start: 'START'
+            };
+
+            // ---- 默认发送文本（可自定义） ----
+            const DEFAULT_SEND_TEXT = `START
+LOOP
+45 135 120 60 45 2.0
+45 135 30 150 45 2.0
+90 90 30 150 45 2.0
+90 90 120 60 45 2.0`;
+            sendArea.value = DEFAULT_SEND_TEXT;
+
+            // ---- 工具函数 ----
+            function setStatus(msg, type) {
+                statusBar.textContent = msg;
+                statusBar.className = 'status-bar';
+                if (type) statusBar.classList.add(type);
+            }
+
+            // 向终端追加消息（direction: 'send' 或 'recv'）
+            function appendToTerminal(message, direction) {
+                if (!message) return;
+                const prefix = direction === 'send' ? '>>> ' : '<<< ';
+                const cls = direction === 'send' ? 'send' : 'recv';
+                const lines = message.split('\n');
+                let formatted = '';
+                lines.forEach((line, index) => {
+                    if (index === 0) {
+                        formatted += `<span class="${cls}"><span class="prefix">${prefix}</span>${line}</span>`;
+                    } else {
+                        formatted += `<span class="${cls}">  ${line}</span>`;
+                    }
+                    if (index < lines.length - 1) formatted += '\n';
+                });
+                terminal.innerHTML += formatted + '\n';
+                // 自动滚动（根据复选框）
+                if (autoScroll.checked) {
+                    terminal.scrollTop = terminal.scrollHeight;
+                }
+            }
+
+            function clearTerminal() {
+                terminal.innerHTML = '';
+            }
+
+            // ---- 核心发送函数（不依赖 sendArea） ----
+            async function sendContent(content) {
+                if (!port || !port.writable) {
+                    setStatus('请先打开串口', 'error');
+                    return false;
+                }
+                if (!content.trim()) return false;
+
+                // 自动添加换行（如果勾选且末尾没有换行）
+                let toSend = content;
+                if (appendNewline.checked && !toSend.endsWith('\n')) {
+                    toSend += '\n';
+                }
+
+                // 在终端显示发送内容（显示原始输入，不是自动加换行后的）
+                appendToTerminal(content, 'send');
+
+                try {
+                    const writer = port.writable.getWriter();
+                    const encoder = new TextEncoder();
+                    await writer.write(encoder.encode(toSend));
+                    writer.releaseLock();
+                    setStatus('发送成功', 'success');
+                    return true;
+                } catch (err) {
+                    setStatus('发送失败: ' + err.message, 'error');
+                    return false;
+                }
+            }
+
+            // ---- 从发送框发送 ----
+            async function sendData() {
+                const content = sendArea.value;
+                await sendContent(content);
+            }
+
+            // ---- 预设指令按钮处理 ----
+            function setupCmdButtons() {
+                const buttons = document.querySelectorAll('.cmd-buttons button');
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const cmdKey = btn.dataset.cmd;
+                        const content = COMMANDS[cmdKey];
+                        if (content) {
+                            await sendContent(content);
+                        } else {
+                            setStatus('未知指令', 'error');
+                        }
+                    });
+                });
+            }
+
+            // ---- 扫描已授权端口 ----
+            async function scanPorts() {
+                try {
+                    const ports = await navigator.serial.getPorts();
+                    const currentValue = portSelect.value;
+                    portSelect.innerHTML = '';
+                    if (ports.length === 0) {
+                        const option = document.createElement('option');
+                        option.text = '无可用端口';
+                        option.value = '';
+                        portSelect.appendChild(option);
+                    } else {
+                        ports.forEach((p, idx) => {
+                            const option = document.createElement('option');
+                            let label = `端口 ${idx+1}`;
+                            try {
+                                const info = p.getInfo();
+                                if (info) {
+                                    label = info.usbVendorId ? `VID:${info.usbVendorId}` : label;
+                                    if (info.usbProductId) label += ` PID:${info.usbProductId}`;
+                                }
+                            } catch (e) {}
+                            option.text = label;
+                            option.value = idx;
+                            portSelect.appendChild(option);
+                        });
+                    }
+                    if (currentValue && portSelect.options[currentValue]) {
+                        portSelect.selectedIndex = parseInt(currentValue);
+                    } else if (portSelect.options.length > 0) {
+                        portSelect.selectedIndex = 0;
+                    }
+                } catch (err) {
+                    setStatus('扫描端口失败: ' + err.message, 'error');
+                }
+            }
+
+            // ---- 请求新端口（授权） ----
+            async function requestNewPort() {
+                try {
+                    const newPort = await navigator.serial.requestPort();
+                    await scanPorts();
+                    const ports = await navigator.serial.getPorts();
+                    const index = ports.indexOf(newPort);
+                    if (index !== -1) {
+                        portSelect.selectedIndex = index;
+                        setStatus('已选择端口', 'success');
+                    }
+                    return newPort;
+                } catch (err) {
+                    if (err.message.includes('cancelled')) {
+                        setStatus('用户取消选择', '');
+                    } else {
+                        setStatus('选择端口失败: ' + err.message, 'error');
+                    }
+                    return null;
+                }
+            }
+
+            // ---- 获取当前选中的端口对象 ----
+            async function getSelectedPort() {
+                const index = portSelect.selectedIndex;
+                if (index === -1) return null;
+                const ports = await navigator.serial.getPorts();
+                if (index < ports.length) return ports[index];
+                return null;
+            }
+
+            // ---- 连接/断开 ----
+            async function toggleConnection() {
+                if (port && port.readable) {
+                    await disconnect();
+                } else {
+                    await connect();
+                }
+            }
+
+            async function connect() {
+                try {
+                    let selectedPort = await getSelectedPort();
+                    if (!selectedPort) {
+                        const newPort = await requestNewPort();
+                        if (!newPort) return;
+                        selectedPort = newPort;
+                    }
+
+                    const baud = parseInt(baudSelect.value);
+                    await selectedPort.open({ baudRate: baud });
+                    port = selectedPort;
+                    connectBtn.textContent = '关闭串口';
+                    connectBtn.classList.add('danger');
+                    setStatus(`已连接 ${baud} bps`, 'success');
+
+                    keepReading = true;
+                    readLoop();
+                } catch (err) {
+                    setStatus('连接失败: ' + err.message, 'error');
+                    port = null;
+                    connectBtn.textContent = '打开串口';
+                    connectBtn.classList.remove('danger');
+                }
+            }
+
+            async function disconnect() {
+                keepReading = false;
+                if (reader) {
+                    try { await reader.cancel(); } catch (e) {}
+                    reader = null;
+                }
+                if (port && port.readable) {
+                    try { await port.close(); } catch (e) {}
+                }
+                port = null;
+                connectBtn.textContent = '打开串口';
+                connectBtn.classList.remove('danger');
+                setStatus('已断开', '');
+            }
+
+            // ---- 读取循环 ----
+            async function readLoop() {
+                if (!port || !port.readable) return;
+                try {
+                    reader = port.readable.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    while (keepReading) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        if (value) {
+                            buffer += decoder.decode(value, { stream: true });
+                            let lines = buffer.split('\n');
+                            if (lines.length > 1) {
+                                for (let i = 0; i < lines.length - 1; i++) {
+                                    appendToTerminal(lines[i], 'recv');
+                                }
+                                buffer = lines[lines.length - 1];
+                            }
+                        }
+                    }
+                    if (buffer) {
+                        appendToTerminal(buffer, 'recv');
+                    }
+                } catch (err) {
+                    if (err.name !== 'CancelError' && err.message !== 'Cancel') {
+                        setStatus('读取错误: ' + err.message, 'error');
+                    }
+                } finally {
+                    if (reader) {
+                        try { reader.releaseLock(); } catch (e) {}
+                        reader = null;
+                    }
+                    if (port && !port.readable) {
+                        await disconnect();
+                    }
+                }
+            }
+
+            // ---- 模态框（帮助）控制 ----
+            function showHelp() {
+                helpModal.classList.add('active');
+            }
+            function hideHelp() {
+                helpModal.classList.remove('active');
+            }
+
+            // ---- 事件绑定 ----
+            refreshBtn.addEventListener('click', async () => {
+                await scanPorts();
+                setStatus('端口已刷新', '');
+            });
+
+            selectPortBtn.addEventListener('click', async () => {
+                await requestNewPort();
+            });
+
+            portSelect.addEventListener('mousedown', async (e) => {
+                await scanPorts();
+            });
+
+            connectBtn.addEventListener('click', toggleConnection);
+            sendBtn.addEventListener('click', sendData);
+            clearBtn.addEventListener('click', clearTerminal);
+
+            // Ctrl+Enter 发送
+            sendArea.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    sendData();
+                }
+            });
+
+            // 帮助按钮
+            helpBtn.addEventListener('click', showHelp);
+            helpCloseBtn.addEventListener('click', hideHelp);
+            helpModal.addEventListener('click', (e) => {
+                if (e.target === helpModal) hideHelp();
+            });
+
+            // 初始化预设指令按钮
+            setupCmdButtons();
+
+            // ---- 初始化 ----
+            if (!('serial' in navigator)) {
+                setStatus('您的浏览器不支持 Web Serial API，请使用 Chrome/Edge 并启用 HTTPS', 'error');
+                connectBtn.disabled = true;
+                refreshBtn.disabled = true;
+                selectPortBtn.disabled = true;
+            } else {
+                scanPorts().then(() => {
+                    setStatus('就绪，请选择端口或点击"选择端口"', '');
+                }).catch(err => {
+                    setStatus('初始化失败: ' + err.message, 'error');
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
