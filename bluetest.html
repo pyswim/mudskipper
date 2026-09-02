@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLE ↔ 串口 字符通信工具</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .container { max-width: 800px; width: 100%; background: #fff; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); padding: 28px 30px 35px; }
+        h1 { font-size: 24px; font-weight: 600; color: #1a2634; margin-bottom: 8px; }
+        .subtitle { color: #5e6f88; font-size: 14px; margin-bottom: 25px; border-left: 4px solid #2b7be4; padding-left: 14px; background: #f7faff; border-radius: 0 8px 8px 0; line-height: 1.6; }
+        .status-bar { display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 12px 18px; border-radius: 40px; margin-bottom: 22px; border: 1px solid #e9edf2; }
+        .status-indicator { display: flex; align-items: center; gap: 10px; }
+        .led { width: 14px; height: 14px; border-radius: 50%; background: #b0c4d9; transition: 0.3s; }
+        .led.connected { background: #1db954; box-shadow: 0 0 10px #1db95488; }
+        .led.disconnected { background: #e74c3c; }
+        .device-name { font-weight: 500; color: #1a2634; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .btn { background: #fff; border: 1px solid #d0d7e2; padding: 8px 20px; border-radius: 40px; font-weight: 500; font-size: 14px; cursor: pointer; transition: 0.2s; color: #1a2634; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: #2b7be4; border-color: #2b7be4; color: white; }
+        .btn-primary:hover { background: #1a5bb5; }
+        .btn-danger { background: #e74c3c; border-color: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn:disabled { opacity: 0.5; pointer-events: none; }
+        .btn-sm { padding: 5px 14px; font-size: 13px; }
+
+        .control-group { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; align-items: center; }
+        .control-group label { font-size: 14px; color: #2c3e50; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+        .control-group select, .control-group input[type="checkbox"] { padding: 6px 12px; border-radius: 30px; border: 1px solid #d0d7e2; background: white; font-size: 13px; min-width: 140px; }
+        .control-group input[type="checkbox"] { width: 18px; height: 18px; min-width: unset; cursor: pointer; }
+
+        .options-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 8px 0 12px; }
+        .options-row label { font-size: 13px; color: #2c3e50; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+
+        .send-area { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 12px; align-items: center; }
+        .send-area input { flex: 2; padding: 12px 18px; border: 1px solid #d0d7e2; border-radius: 40px; font-size: 15px; outline: none; transition: 0.2s; }
+        .send-area input:focus { border-color: #2b7be4; box-shadow: 0 0 0 3px #2b7be422; }
+        .send-area .btn { padding: 12px 28px; }
+
+        .log-container { background: #f8fafc; border-radius: 18px; border: 1px solid #e9edf2; padding: 14px 18px; height: 280px; overflow-y: auto; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px; line-height: 1.7; color: #1e2a3a; white-space: pre-wrap; word-break: break-all; margin-top: 10px; position: relative; }
+        .log-container .log-empty { color: #8a9bb5; font-style: italic; user-select: none; }
+        .log-container .log-entry { border-bottom: 1px solid #eef2f7; padding: 4px 0; }
+        .log-container .log-entry:last-child { border-bottom: none; }
+        .log-container .timestamp { color: #6c7f99; margin-right: 10px; }
+        .log-container .rx { color: #0066cc; }
+        .log-container .tx { color: #cc7b00; }
+        .log-container .system { color: #5e6f88; }
+        .log-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+        .log-actions .btn { padding: 4px 16px; font-size: 12px; }
+
+        .footer { margin-top: 20px; font-size: 12px; color: #8a9bb5; text-align: center; border-top: 1px solid #edf2f7; padding-top: 18px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📡 BLE ↔ 串口 字符通信</h1>
+    <div class="subtitle">
+        服务 UUID: <code>0000ffe0-...</code> &nbsp;|&nbsp; 特征 ffe1 / ffe2<br>
+        <span style="color:#e67e22;">✓ 发送文本自动加换行 · 接收同时显示十六进制和文本</span>
+    </div>
+
+    <!-- 状态栏 -->
+    <div class="status-bar">
+        <div class="status-indicator">
+            <span class="led" id="ledStatus"></span>
+            <span class="device-name" id="deviceName">未连接</span>
+        </div>
+        <div>
+            <button class="btn btn-primary" id="btnConnect">连接设备</button>
+            <button class="btn btn-danger" id="btnDisconnect" disabled>断开</button>
+        </div>
+    </div>
+
+    <!-- 特征选择 -->
+    <div class="control-group">
+        <label>📥 接收 (Notify):
+            <select id="rxSelect"><option value="">— 自动识别 —</option></select>
+        </label>
+        <label>📤 发送 (Write):
+            <select id="txSelect"><option value="">— 自动识别 —</option></select>
+        </label>
+    </div>
+
+    <!-- 选项 -->
+    <div class="options-row">
+        <label>📖 接收显示:
+            <select id="rxDisplayMode">
+                <option value="both">十六进制 + 文本</option>
+                <option value="hex">仅十六进制</option>
+                <option value="text">仅文本 (UTF-8)</option>
+            </select>
+        </label>
+        <label>↩️ 自动换行 <input type="checkbox" id="addNewline" checked></label>
+        <label>✍️ 写入方式:
+            <select id="writeType">
+                <option value="withResponse" selected>带响应</option>
+                <option value="withoutResponse">无响应</option>
+            </select>
+        </label>
+    </div>
+
+    <!-- 发送区域 -->
+    <div class="send-area">
+        <input type="text" id="inputData" placeholder="输入要发送的字符 (英/中文皆可)" />
+        <button class="btn btn-primary" id="btnSend" disabled>发送</button>
+    </div>
+
+    <!-- 日志 -->
+    <div class="log-container" id="logContainer"><div class="log-empty">等待连接…</div></div>
+    <div class="log-actions">
+        <button class="btn btn-sm" id="btnClearLog">清空日志</button>
+    </div>
+
+    <div class="footer">Web Bluetooth API · 需 HTTPS 或 localhost · Chrome / Edge</div>
+</div>
+
+<script>
+// ============================================================
+// 1. UUID 配置（小写）
+// ============================================================
+const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
+const CHAR_FFE1 = '0000ffe1-0000-1000-8000-00805f9b34fb';
+const CHAR_FFE2 = '0000ffe2-0000-1000-8000-00805f9b34fb';
+
+// ============================================================
+// 2. 状态变量
+// ============================================================
+let device = null, server = null, service = null;
+let rxCharacteristic = null, txCharacteristic = null;
+let isConnected = false;
+
+// DOM 引用
+const led = document.getElementById('ledStatus');
+const deviceNameEl = document.getElementById('deviceName');
+const btnConnect = document.getElementById('btnConnect');
+const btnDisconnect = document.getElementById('btnDisconnect');
+const btnSend = document.getElementById('btnSend');
+const inputData = document.getElementById('inputData');
+const logContainer = document.getElementById('logContainer');
+const btnClearLog = document.getElementById('btnClearLog');
+const rxSelect = document.getElementById('rxSelect');
+const txSelect = document.getElementById('txSelect');
+const rxDisplayMode = document.getElementById('rxDisplayMode');
+const addNewline = document.getElementById('addNewline');
+const writeType = document.getElementById('writeType');
+
+// ============================================================
+// 3. 日志
+// ============================================================
+function log(message, type = 'system') {
+    const ts = new Date().toLocaleTimeString();
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="timestamp">[${ts}]</span><span class="${type}">${message}</span>`;
+    const empty = logContainer.querySelector('.log-empty');
+    if (empty) empty.remove();
+    logContainer.appendChild(entry);
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
+
+function clearLog() {
+    logContainer.innerHTML = `<div class="log-empty">日志已清空</div>`;
+}
+
+// ============================================================
+// 4. 界面状态
+// ============================================================
+function setConnected(connected, name = '') {
+    isConnected = connected;
+    if (connected) {
+        led.className = 'led connected';
+        deviceNameEl.textContent = name || '已连接';
+        btnConnect.disabled = true;
+        btnDisconnect.disabled = false;
+        btnSend.disabled = false;
+        rxSelect.disabled = false;
+        txSelect.disabled = false;
+    } else {
+        led.className = 'led disconnected';
+        deviceNameEl.textContent = '未连接';
+        btnConnect.disabled = false;
+        btnDisconnect.disabled = true;
+        btnSend.disabled = true;
+        rxSelect.disabled = true;
+        txSelect.disabled = true;
+        rxSelect.innerHTML = '<option value="">— 自动识别 —</option>';
+        txSelect.innerHTML = '<option value="">— 自动识别 —</option>';
+        rxCharacteristic = null;
+        txCharacteristic = null;
+    }
+}
+
+// ============================================================
+// 5. 连接 / 断开
+// ============================================================
+async function connect() {
+    try {
+        log('正在请求设备…', 'system');
+        device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [SERVICE_UUID]
+        });
+
+        log(`已选择: ${device.name || '未命名'} (ID: ${device.id})`, 'system');
+        deviceNameEl.textContent = device.name || '连接中…';
+
+        server = await device.gatt.connect();
+        log('GATT 已连接', 'system');
+
+        service = await server.getPrimaryService(SERVICE_UUID);
+        log(`服务 ${SERVICE_UUID} 已获取`, 'system');
+
+        const characteristics = await service.getCharacteristics();
+        log(`发现 ${characteristics.length} 个特征`, 'system');
+
+        rxSelect.innerHTML = '';
+        txSelect.innerHTML = '';
+        let defaultRx = null, defaultTx = null;
+
+        for (const char of characteristics) {
+            const uuid = char.uuid;
+            const props = char.properties;
+            const optionRx = document.createElement('option');
+            const optionTx = document.createElement('option');
+            optionRx.value = uuid;
+            optionTx.value = uuid;
+
+            let label = uuid;
+            if (uuid.toLowerCase() === CHAR_FFE1) label = 'FFE1 (通知+写)';
+            else if (uuid.toLowerCase() === CHAR_FFE2) label = 'FFE2 (写)';
+            optionRx.textContent = `${label} [${props.notify?'通知':''}${props.indicate?'指示':''}]`;
+            optionTx.textContent = `${label} [${props.write?'写':''}${props.writeWithoutResponse?'无响应写':''}]`;
+
+            if (props.notify || props.indicate) {
+                rxSelect.appendChild(optionRx);
+                if (!defaultRx) defaultRx = uuid;
+            }
+            if (props.write || props.writeWithoutResponse) {
+                txSelect.appendChild(optionTx);
+                if (!defaultTx) defaultTx = uuid;
+            }
+        }
+
+        if (rxSelect.options.length === 0) rxSelect.innerHTML = '<option value="">无通知特征</option>';
+        if (txSelect.options.length === 0) txSelect.innerHTML = '<option value="">无写入特征</option>';
+
+        if (defaultRx) rxSelect.value = defaultRx;
+        if (defaultTx) txSelect.value = defaultTx;
+
+        await selectCharacteristics();
+
+        if (rxCharacteristic) {
+            await rxCharacteristic.startNotifications();
+            rxCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+            log(`已启用通知 (${rxCharacteristic.uuid})`, 'system');
+        } else {
+            log('⚠️ 未选择接收特征', 'system');
+        }
+
+        device.addEventListener('gattserverdisconnected', () => {
+            if (isConnected) {
+                log('⚠️ 设备已断开', 'system');
+                setConnected(false);
+            }
+        });
+
+        setConnected(true, device.name || 'BLE设备');
+        log('✅ 连接就绪！', 'system');
+
+    } catch (error) {
+        log(`❌ 连接失败: ${error.message}`, 'system');
+        setConnected(false);
+        console.error(error);
+    }
+}
+
+function disconnect() {
+    if (device && device.gatt) try { device.gatt.disconnect(); } catch(e) {}
+    if (rxCharacteristic) rxCharacteristic.removeEventListener('characteristicvaluechanged', handleNotification);
+    setConnected(false);
+    log('已断开', 'system');
+}
+
+async function selectCharacteristics() {
+    if (!service) return;
+    const rxUuid = rxSelect.value;
+    const txUuid = txSelect.value;
+    try {
+        if (rxUuid) {
+            rxCharacteristic = await service.getCharacteristic(rxUuid);
+        } else {
+            rxCharacteristic = null;
+        }
+        if (txUuid) {
+            txCharacteristic = await service.getCharacteristic(txUuid);
+        } else {
+            txCharacteristic = null;
+        }
+        if (rxCharacteristic && isConnected) {
+            await rxCharacteristic.startNotifications();
+            rxCharacteristic.addEventListener('characteristicvaluechanged', handleNotification);
+        }
+    } catch (e) {
+        log(`❌ 获取特征失败: ${e.message}`, 'system');
+    }
+}
+
+// ============================================================
+// 6. 接收数据（灵活显示）
+// ============================================================
+function handleNotification(event) {
+    const value = event.target.value;
+    const bytes = new Uint8Array(value.buffer);
+
+    // 生成十六进制字符串
+    const hexStr = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+
+    // 解码 UTF-8 文本
+    let textStr = '';
+    try {
+        textStr = new TextDecoder('utf-8').decode(bytes);
+    } catch {
+        textStr = '(解码错误)';
+    }
+
+    const mode = rxDisplayMode.value;
+    let display = '';
+    if (mode === 'hex') {
+        display = `[hex] ${hexStr}`;
+    } else if (mode === 'text') {
+        display = `[text] ${textStr}`;
+    } else { // both
+        display = `[hex] ${hexStr}  |  [text] ${textStr}`;
+    }
+
+    log(`📩 ${display}`, 'rx');
+}
+
+// ============================================================
+// 7. 发送数据（纯文本 UTF-8，自动加换行）
+// ============================================================
+async function sendData() {
+    if (!isConnected) {
+        log('⚠️ 未连接', 'system');
+        return;
+    }
+    if (!txCharacteristic) {
+        log('⚠️ 未选择发送特征', 'system');
+        return;
+    }
+
+    let raw = inputData.value.trim();
+    if (!raw) {
+        log('⚠️ 请输入数据', 'system');
+        return;
+    }
+
+    // 如果开启自动换行，追加 \r\n
+    if (addNewline.checked) {
+        raw += '\r\n';
+    }
+
+    // 编码为 UTF-8 字节
+    const dataBytes = new TextEncoder().encode(raw);
+
+    // 显示发送内容（十六进制 + 文本）
+    const hexDebug = Array.from(dataBytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+    const textDebug = new TextDecoder('utf-8').decode(dataBytes);
+
+    try {
+        if (writeType.value === 'withResponse') {
+            await txCharacteristic.writeValueWithResponse(dataBytes);
+            log(`📤 [hex] ${hexDebug}  |  [text] ${textDebug}  (带响应)`, 'tx');
+        } else {
+            await txCharacteristic.writeValueWithoutResponse(dataBytes);
+            log(`📤 [hex] ${hexDebug}  |  [text] ${textDebug}  (无响应)`, 'tx');
+        }
+        inputData.value = '';
+    } catch (error) {
+        log(`❌ 发送失败: ${error.message}`, 'system');
+        console.error(error);
+    }
+}
+
+// ============================================================
+// 8. 事件绑定
+// ============================================================
+btnConnect.addEventListener('click', connect);
+btnDisconnect.addEventListener('click', disconnect);
+btnSend.addEventListener('click', sendData);
+inputData.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendData(); });
+btnClearLog.addEventListener('click', clearLog);
+rxSelect.addEventListener('change', () => { if (isConnected) selectCharacteristics(); });
+txSelect.addEventListener('change', () => { if (isConnected) selectCharacteristics(); });
+
+setConnected(false);
+if (!navigator.bluetooth) {
+    log('❌ 浏览器不支持 Web Bluetooth API。请使用 Chrome/Edge 并启用 HTTPS。', 'system');
+    btnConnect.disabled = true;
+}
+window.addEventListener('beforeunload', () => {
+    if (device && device.gatt) try { device.gatt.disconnect(); } catch(e) {}
+});
+
+console.log('BLE 字符通信工具已加载');
+</script>
+</body>
+</html>
