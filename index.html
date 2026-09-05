@@ -208,6 +208,8 @@
         <button data-cmd="crawl">🐍 爬行</button>
         <button data-cmd="tail">🦎 尾巴摆动</button>
         <button data-cmd="pswim">🐟 胸鳍游动</button>  <!-- 新增 -->
+        <button data-cmd="turnleft">左转</button>  <!-- 新增 -->
+        <button data-cmd="turnright">右转</button>  <!-- 新增 -->
         <button data-cmd="reset">🔄 复位</button>
         <button data-cmd="stop">⏹ 停止</button>
         <button data-cmd="start">▶ 激活启动</button>
@@ -349,6 +351,20 @@ LOOP
 LOOP
 90 90 150 30 45 1
 90 90 90 90 45 1`,
+        turnleft:`START
+LOOP
+120 150 120 60 45 0.5
+120 150 120 150 45 0.5
+120 90 120 150 45 0.5
+120 90 30 30 80 2.0
+30 120 120 60 45 0.5`,
+        turnright:`START
+LOOP
+30 60 150 60 45 0.5
+30 60 30 60 45 0.5
+90 60 30 60 45 0.5
+90 60 150 150 10 2.0
+60 150 150 60 45 0.5`,
         reset: 'RESET',
         stop: 'STOP',
         start: 'START'
