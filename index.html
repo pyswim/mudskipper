@@ -207,7 +207,7 @@
     <div class="cmd-buttons">
         <button data-cmd="crawl">🐍 爬行</button>
         <button data-cmd="tail">🦎 尾巴摆动</button>
-        <button data-cmd="tailfin">🐟 尾鳍游动</button>  <!-- 新增 -->
+        <button data-cmd="pswim">🐟 胸鳍游动</button>  <!-- 新增 -->
         <button data-cmd="reset">🔄 复位</button>
         <button data-cmd="stop">⏹ 停止</button>
         <button data-cmd="start">▶ 激活启动</button>
@@ -326,6 +326,8 @@ LOOP
     // ============================================================
     // 2. 预设指令（含新增“尾鳍游动”）
     // ============================================================
+//原位 90 90 120 60 45
+    
     const COMMANDS = {
         crawl: `START
 LOOP
@@ -336,11 +338,11 @@ LOOP
         tail: `START
 LOOP
 45 135 120 60 60 1.0
-45 135 30 150 30 1.0`,
-        tailfin: `START
+45 135 120 60 30 1.0`,
+        pswim: `START
 LOOP
-120 60 135 45 45 1
-120 60 90 90 45 1`,
+90 90 135 45 45 1
+90 90 105 75 45 1`,
         reset: 'RESET',
         stop: 'STOP',
         start: 'START'
