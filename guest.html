@@ -27,6 +27,7 @@
             border-radius: 32px;
             padding: 20px 18px 28px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            position: relative;
         }
         h1 {
             font-size: 22px;
@@ -202,371 +203,519 @@
             padding-top: 12px;
         }
         .hidden { display: none !important; }
+
+        /* ===== 微信遮罩样式 ===== */
+        #wechat-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(6px);
+            z-index: 9999;
+            display: none;          /* 默认隐藏，仅在微信中显示 */
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 30px;
+            color: #fff;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        #wechat-overlay .icon-big {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        #wechat-overlay h2 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        #wechat-overlay p {
+            font-size: 16px;
+            line-height: 1.6;
+            max-width: 360px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        #wechat-overlay .highlight {
+            color: #fdcb6e;
+            font-weight: 500;
+        }
+        #wechat-overlay .btn-copy {
+            margin-top: 24px;
+            background: #0984e3;
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 40px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 12px rgba(9, 132, 227, 0.4);
+        }
+        #wechat-overlay .btn-copy:active {
+            transform: scale(0.95);
+        }
+        #wechat-overlay .toast {
+            margin-top: 16px;
+            font-size: 14px;
+            color: #27ae60;
+            min-height: 24px;
+            transition: 0.3s;
+        }
+        #wechat-overlay .sub-hint {
+            margin-top: 20px;
+            font-size: 13px;
+            opacity: 0.6;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            padding-top: 18px;
+            max-width: 320px;
+        }
+        /* 微信遮罩显示时，底层内容不可点击（遮罩覆盖） */
+        body.wechat-mode .container {
+            filter: blur(2px);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>🐟 机器鱼遥控器</h1>
-
-    <!-- 状态栏 -->
-    <div class="status-bar">
-        <div class="status-left">
-            <span class="led" id="ledStatus"></span>
-            <span class="device-name" id="deviceName">未连接</span>
+    <!-- ===== 微信环境遮罩 ===== -->
+    <div id="wechat-overlay">
+        <div class="icon-big">⚠️</div>
+        <h2>请在外部浏览器打开</h2>
+        <p>
+            本页面需要 <span class="highlight">蓝牙（Web Bluetooth）</span> 功能，<br>
+            微信内置浏览器不支持该特性。
+        </p>
+        <p style="font-size:15px; margin-top:6px;">
+            请点击右上角 <span class="highlight">「…」</span> 选择 <span class="highlight">「在浏览器中打开」</span>
+        </p>
+        <p style="font-size:14px; opacity:0.7; margin-top:4px;">
+            或复制下方链接，粘贴到系统浏览器访问
+        </p>
+        <button class="btn-copy" id="copyLinkBtn">📋 复制链接</button>
+        <div class="toast" id="copyToast"></div>
+        <div class="sub-hint">
+            支持 Chrome / Safari / Edge 等主流浏览器
         </div>
-        <span class="status-msg" id="statusMsg">就绪</span>
     </div>
 
-    <!-- 连接区 -->
-    <div class="connect-area">
-        <button id="connectBtn">🔗 连接蓝牙</button>
-        <button id="disconnectBtn" class="danger hidden">断开</button>
+    <!-- ===== 遥控器主界面 ===== -->
+    <div class="container" id="mainContainer">
+        <h1>🐟 机器鱼遥控器</h1>
+
+        <!-- 状态栏 -->
+        <div class="status-bar">
+            <div class="status-left">
+                <span class="led" id="ledStatus"></span>
+                <span class="device-name" id="deviceName">未连接</span>
+            </div>
+            <span class="status-msg" id="statusMsg">就绪</span>
+        </div>
+
+        <!-- 连接区 -->
+        <div class="connect-area">
+            <button id="connectBtn">🔗 连接蓝牙</button>
+            <button id="disconnectBtn" class="danger hidden">断开</button>
+        </div>
+
+        <!-- 十字方向键 -->
+        <div class="dpad">
+            <div></div>                           <!-- 上 -->
+            <button class="up" data-cmd="crawl">⬆</button>
+            <div></div>
+
+            <button class="left" data-cmd="turnleft">⬅</button>  <!-- 左 -->
+            <button class="stop" data-cmd="stop">⏹</button>       <!-- 停止 -->
+            <button class="right" data-cmd="turnright">➡</button> <!-- 右 -->
+
+            <div></div>                           <!-- 下 -->
+            <button class="down" data-cmd="back">⬇</button>
+            <div></div>
+        </div>
+
+        <!-- 功能按钮 -->
+        <div class="func-grid">
+            <button data-cmd="tail" class="teal">
+                <span class="icon">🦎</span>
+                <span class="label">尾巴</span>
+            </button>
+            <button data-cmd="pswim" class="purple">
+                <span class="icon">🐟</span>
+                <span class="label">胸鳍</span>
+            </button>
+            <button data-cmd="reset" class="orange">
+                <span class="icon">🔄</span>
+                <span class="label">复位</span>
+            </button>
+            <button data-cmd="start" class="green">
+                <span class="icon">▶</span>
+                <span class="label">激活</span>
+            </button>
+        </div>
+
+        <!-- 选项 -->
+        <div class="options-row">
+            <label><input type="checkbox" id="appendNewline" checked> 自动换行</label>
+            <label>写入:
+                <select id="writeType">
+                    <option value="withResponse">带响应</option>
+                    <option value="withoutResponse">无响应</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="footer">
+            ⚡ 蓝牙 BLE · 仅搜索 HC-05 · 单击发送指令
+        </div>
     </div>
 
-    <!-- 十字方向键 -->
-    <div class="dpad">
-        <div></div>                           <!-- 上 -->
-        <button class="up" data-cmd="crawl">⬆</button>
-        <div></div>
+    <script>
+        (function() {
+            // ============================================================
+            // 0. 微信环境检测与遮罩控制
+            // ============================================================
+            const isWechat = navigator.userAgent.toLowerCase().indexOf('micromessenger') !== -1;
+            const overlay = document.getElementById('wechat-overlay');
+            const copyBtn = document.getElementById('copyLinkBtn');
+            const toast = document.getElementById('copyToast');
 
-        <button class="left" data-cmd="turnleft">⬅</button>  <!-- 左 -->
-        <button class="stop" data-cmd="stop">⏹</button>       <!-- 停止 -->
-        <button class="right" data-cmd="turnright">➡</button> <!-- 右 -->
+            if (isWechat) {
+                overlay.style.display = 'flex';
+                document.body.classList.add('wechat-mode'); // 加类用于模糊底层
+                // 复制链接功能（兼容微信）
+                copyBtn.addEventListener('click', function() {
+                    const url = window.location.href;
+                    // 方法1：使用 clipboard API（微信可能不支持，降级）
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(url).then(() => {
+                            toast.textContent = '✅ 链接已复制！请前往浏览器粘贴访问';
+                            toast.style.color = '#27ae60';
+                        }).catch(() => {
+                            fallbackCopy(url);
+                        });
+                    } else {
+                        fallbackCopy(url);
+                    }
+                });
 
-        <div></div>                           <!-- 下 -->
-        <button class="down" data-cmd="back">⬇</button>
-        <div></div>
-    </div>
+                function fallbackCopy(text) {
+                    // 创建临时 input
+                    const input = document.createElement('input');
+                    input.value = text;
+                    input.style.position = 'fixed';
+                    input.style.opacity = '0';
+                    input.style.left = '-9999px';
+                    document.body.appendChild(input);
+                    input.select();
+                    try {
+                        const success = document.execCommand('copy');
+                        if (success) {
+                            toast.textContent = '✅ 链接已复制！请前往浏览器粘贴访问';
+                            toast.style.color = '#27ae60';
+                        } else {
+                            toast.textContent = '❌ 复制失败，请手动复制链接';
+                            toast.style.color = '#e74c3c';
+                        }
+                    } catch (e) {
+                        toast.textContent = '❌ 复制失败，请手动复制链接';
+                        toast.style.color = '#e74c3c';
+                    }
+                    document.body.removeChild(input);
+                }
+            }
 
-    <!-- 功能按钮 -->
-    <div class="func-grid">
-        <button data-cmd="tail" class="teal">
-            <span class="icon">🦎</span>
-            <span class="label">尾巴</span>
-        </button>
-        <button data-cmd="pswim" class="purple">
-            <span class="icon">🐟</span>
-            <span class="label">胸鳍</span>
-        </button>
-        <button data-cmd="reset" class="orange">
-            <span class="icon">🔄</span>
-            <span class="label">复位</span>
-        </button>
-        <button data-cmd="start" class="green">
-            <span class="icon">▶</span>
-            <span class="label">激活</span>
-        </button>
-    </div>
+            // ============================================================
+            // 1. DOM 引用（遥控器逻辑）
+            // ============================================================
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const ledStatus = document.getElementById('ledStatus');
+            const deviceName = document.getElementById('deviceName');
+            const statusMsg = document.getElementById('statusMsg');
+            const appendNewline = document.getElementById('appendNewline');
+            const writeType = document.getElementById('writeType');
 
-    <!-- 选项 -->
-    <div class="options-row">
-        <label><input type="checkbox" id="appendNewline" checked> 自动换行</label>
-        <label>写入:
-            <select id="writeType">
-                <option value="withResponse">带响应</option>
-                <option value="withoutResponse">无响应</option>
-            </select>
-        </label>
-    </div>
-
-    <div class="footer">
-        ⚡ 蓝牙 BLE · 仅搜索 HC-05 · 单击发送指令
-    </div>
-</div>
-
-<script>
-    (function() {
-        // ============================================================
-        // 1. DOM 引用
-        // ============================================================
-        const connectBtn = document.getElementById('connectBtn');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const ledStatus = document.getElementById('ledStatus');
-        const deviceName = document.getElementById('deviceName');
-        const statusMsg = document.getElementById('statusMsg');
-        const appendNewline = document.getElementById('appendNewline');
-        const writeType = document.getElementById('writeType');
-
-        // ============================================================
-        // 2. 指令定义（新增 back）
-        // ============================================================
-        const COMMANDS = {
-            crawl: `START
+            // ============================================================
+            // 2. 指令定义
+            // ============================================================
+            const COMMANDS = {
+                crawl: `START
 LOOP
 30 150 90 90 45 2.0
 30 150 30 150 45 2.0
 90 90 30 150 45 2.0
 90 90 90 90 45 2.0`,
-            back: `START
+                back: `START
 LOOP
 30 150 120 60 45 2
 90 90 120 60 45 2
 90 90 20 160 45 2`,
-            tail: `START
+                tail: `START
 LOOP
 90 90 120 60 60 1.0
 90 90 120 60 30 1.0`,
-            pswim: `START
+                pswim: `START
 LOOP
 90 90 150 30 45 1
 90 90 90 90 45 1`,
-            turnleft: `START
+                turnleft: `START
 LOOP
 120 160 120 60 45 2.5
 120 160 120 120 45 2.5
 120 90 120 120 45 2.5
 120 90 30 60 80 4.0
 30 160 120 60 45 2.5`,
-            turnright: `START
+                turnright: `START
 LOOP
 20 50 120 60 45 2.5
 20 50 30 60 45 2.5
 90 50 30 60 45 2.5
 90 50 120 150 10 4.0
 60 150 120 60 45 2.5`,
-            reset: 'RESET',
-            stop: 'STOP',
-            start: 'START'
-        };
+                reset: 'RESET',
+                stop: 'STOP',
+                start: 'START'
+            };
 
-        // ============================================================
-        // 3. 蓝牙相关状态
-        // ============================================================
-        let bleDevice = null;
-        let bleServer = null;
-        let bleService = null;
-        let bleTxChar = null;
-        let bleRxChar = null;
-        let bleNotifyListener = null;
-        let isConnected = false;
+            // ============================================================
+            // 3. 蓝牙相关状态
+            // ============================================================
+            let bleDevice = null;
+            let bleServer = null;
+            let bleService = null;
+            let bleTxChar = null;
+            let bleRxChar = null;
+            let bleNotifyListener = null;
+            let isConnected = false;
 
-        const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
-        const CHAR_FFE1 = '0000ffe1-0000-1000-8000-00805f9b34fb';
-        const CHAR_FFE2 = '0000ffe2-0000-1000-8000-00805f9b34fb';
+            const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
+            const CHAR_FFE1 = '0000ffe1-0000-1000-8000-00805f9b34fb';
+            const CHAR_FFE2 = '0000ffe2-0000-1000-8000-00805f9b34fb';
 
-        // ============================================================
-        // 4. 界面更新
-        // ============================================================
-        function setStatus(msg, isError = false) {
-            statusMsg.textContent = msg;
-            statusMsg.style.color = isError ? '#e74c3c' : '#fdcb6e';
-        }
-
-        function setConnected(connected, name = '') {
-            isConnected = connected;
-            ledStatus.className = 'led ' + (connected ? 'connected' : 'disconnected');
-            deviceName.textContent = connected ? (name || 'HC-05') : '未连接';
-            connectBtn.textContent = connected ? '已连接' : '🔗 连接蓝牙';
-            connectBtn.disabled = connected;
-            disconnectBtn.classList.toggle('hidden', !connected);
-            if (connected) {
-                setStatus('就绪', false);
-            } else {
-                setStatus('未连接', false);
+            // ============================================================
+            // 4. 界面更新
+            // ============================================================
+            function setStatus(msg, isError = false) {
+                statusMsg.textContent = msg;
+                statusMsg.style.color = isError ? '#e74c3c' : '#fdcb6e';
             }
-        }
 
-        // ============================================================
-        // 5. 蓝牙连接 / 断开（过滤 HC-05）
-        // ============================================================
-        async function scanAndConnect() {
-            if (!navigator.bluetooth) {
-                setStatus('浏览器不支持 Web Bluetooth', true);
-                return;
+            function setConnected(connected, name = '') {
+                isConnected = connected;
+                ledStatus.className = 'led ' + (connected ? 'connected' : 'disconnected');
+                deviceName.textContent = connected ? (name || 'HC-05') : '未连接';
+                connectBtn.textContent = connected ? '已连接' : '🔗 连接蓝牙';
+                connectBtn.disabled = connected;
+                disconnectBtn.classList.toggle('hidden', !connected);
+                if (connected) {
+                    setStatus('就绪', false);
+                } else {
+                    setStatus('未连接', false);
+                }
             }
-            try {
-                setStatus('正在扫描 HC-05...', false);
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: false,
-                    filters: [{ name: 'HC-05' }],
-                    optionalServices: [SERVICE_UUID]
-                });
-                if (device.name && device.name.toUpperCase() !== 'HC-05') {
-                    setStatus('请选择 HC-05 设备', true);
+
+            // ============================================================
+            // 5. 蓝牙连接 / 断开
+            // ============================================================
+            async function scanAndConnect() {
+                if (!navigator.bluetooth) {
+                    setStatus('浏览器不支持 Web Bluetooth', true);
                     return;
                 }
-                bleDevice = device;
-                setStatus('正在连接...', false);
-                await connectBle();
-            } catch (err) {
-                if (err.message.includes('cancelled')) {
-                    setStatus('用户取消', false);
-                } else {
-                    setStatus('扫描/连接失败: ' + err.message, true);
+                try {
+                    setStatus('正在扫描 HC-05...', false);
+                    const device = await navigator.bluetooth.requestDevice({
+                        acceptAllDevices: false,
+                        filters: [{ name: 'HC-05' }],
+                        optionalServices: [SERVICE_UUID]
+                    });
+                    if (device.name && device.name.toUpperCase() !== 'HC-05') {
+                        setStatus('请选择 HC-05 设备', true);
+                        return;
+                    }
+                    bleDevice = device;
+                    setStatus('正在连接...', false);
+                    await connectBle();
+                } catch (err) {
+                    if (err.message.includes('cancelled')) {
+                        setStatus('用户取消', false);
+                    } else {
+                        setStatus('扫描/连接失败: ' + err.message, true);
+                    }
+                    setConnected(false);
                 }
-                setConnected(false);
             }
-        }
 
-        async function connectBle() {
-            if (!bleDevice) {
-                setStatus('未选择设备', true);
-                return;
+            async function connectBle() {
+                if (!bleDevice) {
+                    setStatus('未选择设备', true);
+                    return;
+                }
+                try {
+                    bleServer = await bleDevice.gatt.connect();
+                    bleService = await bleServer.getPrimaryService(SERVICE_UUID);
+                    const chars = await bleService.getCharacteristics();
+
+                    bleRxChar = null;
+                    bleTxChar = null;
+                    for (const char of chars) {
+                        const uuid = char.uuid.toLowerCase();
+                        if (uuid === CHAR_FFE1 || (char.properties.notify && char.properties.write)) {
+                            bleRxChar = char;
+                        }
+                        if (uuid === CHAR_FFE2 || (char.properties.write && !char.properties.notify)) {
+                            bleTxChar = char;
+                        }
+                        if (bleRxChar && bleTxChar) break;
+                    }
+                    if (!bleRxChar) {
+                        for (const char of chars) {
+                            if (char.properties.notify || char.properties.indicate) {
+                                bleRxChar = char;
+                                break;
+                            }
+                        }
+                    }
+                    if (!bleTxChar) {
+                        for (const char of chars) {
+                            if (char.properties.write || char.properties.writeWithoutResponse) {
+                                bleTxChar = char;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!bleRxChar) setStatus('警告: 未找到通知特征', true);
+                    if (!bleTxChar) setStatus('警告: 未找到写入特征', true);
+
+                    if (bleRxChar) {
+                        await bleRxChar.startNotifications();
+                        bleNotifyListener = (event) => {};
+                        bleRxChar.addEventListener('characteristicvaluechanged', bleNotifyListener);
+                    }
+
+                    bleDevice.addEventListener('gattserverdisconnected', () => {
+                        if (isConnected) {
+                            setStatus('设备断开', true);
+                            setConnected(false);
+                        }
+                    });
+
+                    setConnected(true, bleDevice.name || 'HC-05');
+                    setStatus('连接成功', false);
+                } catch (err) {
+                    setStatus('连接失败: ' + err.message, true);
+                    setConnected(false);
+                    throw err;
+                }
             }
-            try {
-                bleServer = await bleDevice.gatt.connect();
-                bleService = await bleServer.getPrimaryService(SERVICE_UUID);
-                const chars = await bleService.getCharacteristics();
 
+            async function disconnectBle() {
+                if (bleRxChar && bleNotifyListener) {
+                    bleRxChar.removeEventListener('characteristicvaluechanged', bleNotifyListener);
+                    bleNotifyListener = null;
+                    try { await bleRxChar.stopNotifications(); } catch(e) {}
+                }
+                if (bleDevice && bleDevice.gatt) {
+                    try { bleDevice.gatt.disconnect(); } catch(e) {}
+                }
+                bleDevice = null;
+                bleServer = null;
+                bleService = null;
                 bleRxChar = null;
                 bleTxChar = null;
-                for (const char of chars) {
-                    const uuid = char.uuid.toLowerCase();
-                    if (uuid === CHAR_FFE1 || (char.properties.notify && char.properties.write)) {
-                        bleRxChar = char;
-                    }
-                    if (uuid === CHAR_FFE2 || (char.properties.write && !char.properties.notify)) {
-                        bleTxChar = char;
-                    }
-                    if (bleRxChar && bleTxChar) break;
-                }
-                if (!bleRxChar) {
-                    for (const char of chars) {
-                        if (char.properties.notify || char.properties.indicate) {
-                            bleRxChar = char;
-                            break;
-                        }
-                    }
+                setConnected(false);
+                setStatus('已断开', false);
+            }
+
+            // ============================================================
+            // 6. 发送指令
+            // ============================================================
+            async function sendLine(line) {
+                let toSend = line;
+                if (appendNewline.checked && !toSend.endsWith('\n')) {
+                    toSend += '\n';
                 }
                 if (!bleTxChar) {
-                    for (const char of chars) {
-                        if (char.properties.write || char.properties.writeWithoutResponse) {
-                            bleTxChar = char;
-                            break;
-                        }
-                    }
+                    throw new Error('蓝牙无写入特征');
                 }
-
-                if (!bleRxChar) setStatus('警告: 未找到通知特征', true);
-                if (!bleTxChar) setStatus('警告: 未找到写入特征', true);
-
-                if (bleRxChar) {
-                    await bleRxChar.startNotifications();
-                    bleNotifyListener = (event) => {};
-                    bleRxChar.addEventListener('characteristicvaluechanged', bleNotifyListener);
+                const dataBytes = new TextEncoder().encode(toSend);
+                if (writeType.value === 'withResponse') {
+                    await bleTxChar.writeValueWithResponse(dataBytes);
+                } else {
+                    await bleTxChar.writeValueWithoutResponse(dataBytes);
                 }
-
-                bleDevice.addEventListener('gattserverdisconnected', () => {
-                    if (isConnected) {
-                        setStatus('设备断开', true);
-                        setConnected(false);
-                    }
-                });
-
-                setConnected(true, bleDevice.name || 'HC-05');
-                setStatus('连接成功', false);
-            } catch (err) {
-                setStatus('连接失败: ' + err.message, true);
-                setConnected(false);
-                throw err;
             }
-        }
 
-        async function disconnectBle() {
-            if (bleRxChar && bleNotifyListener) {
-                bleRxChar.removeEventListener('characteristicvaluechanged', bleNotifyListener);
-                bleNotifyListener = null;
-                try { await bleRxChar.stopNotifications(); } catch(e) {}
-            }
-            if (bleDevice && bleDevice.gatt) {
-                try { bleDevice.gatt.disconnect(); } catch(e) {}
-            }
-            bleDevice = null;
-            bleServer = null;
-            bleService = null;
-            bleRxChar = null;
-            bleTxChar = null;
-            setConnected(false);
-            setStatus('已断开', false);
-        }
-
-        // ============================================================
-        // 6. 发送指令（逐行）
-        // ============================================================
-        async function sendLine(line) {
-            let toSend = line;
-            if (appendNewline.checked && !toSend.endsWith('\n')) {
-                toSend += '\n';
-            }
-            if (!bleTxChar) {
-                throw new Error('蓝牙无写入特征');
-            }
-            const dataBytes = new TextEncoder().encode(toSend);
-            if (writeType.value === 'withResponse') {
-                await bleTxChar.writeValueWithResponse(dataBytes);
-            } else {
-                await bleTxChar.writeValueWithoutResponse(dataBytes);
-            }
-        }
-
-        async function sendContent(content) {
-            if (!isConnected) {
-                setStatus('请先连接', true);
-                return false;
-            }
-            if (!content || !content.trim()) return false;
-
-            const lines = content.split('\n').map(line => line.trim()).filter(line => line !== '');
-            if (lines.length === 0) return false;
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                try {
-                    await sendLine(line);
-                } catch (err) {
-                    setStatus(`发送失败 (行${i+1}): ${err.message}`, true);
+            async function sendContent(content) {
+                if (!isConnected) {
+                    setStatus('请先连接', true);
                     return false;
                 }
-                await new Promise(resolve => setTimeout(resolve, 20));
-            }
-            setStatus(`指令已发送 (${lines.length} 行)`, false);
-            return true;
-        }
+                if (!content || !content.trim()) return false;
 
-        // ============================================================
-        // 7. 按钮事件绑定（每个按钮只触发一次 click）
-        // ============================================================
-        function setupCommandButtons() {
-            document.querySelectorAll('[data-cmd]').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const cmdKey = btn.dataset.cmd;
-                    const content = COMMANDS[cmdKey];
-                    if (content) {
-                        await sendContent(content);
-                    } else {
-                        setStatus('未知指令', true);
+                const lines = content.split('\n').map(line => line.trim()).filter(line => line !== '');
+                if (lines.length === 0) return false;
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    try {
+                        await sendLine(line);
+                    } catch (err) {
+                        setStatus(`发送失败 (行${i+1}): ${err.message}`, true);
+                        return false;
                     }
-                });
-            });
-        }
-
-        // ============================================================
-        // 8. 连接/断开按钮
-        // ============================================================
-        connectBtn.addEventListener('click', scanAndConnect);
-        disconnectBtn.addEventListener('click', async () => {
-            await disconnectBle();
-        });
-
-        // ============================================================
-        // 9. 初始化
-        // ============================================================
-        setConnected(false);
-        setupCommandButtons();
-
-        if (!('bluetooth' in navigator)) {
-            setStatus('浏览器不支持 Web Bluetooth', true);
-            connectBtn.disabled = true;
-        }
-
-        window.addEventListener('beforeunload', () => {
-            if (bleDevice && bleDevice.gatt) {
-                try { bleDevice.gatt.disconnect(); } catch(e) {}
+                    await new Promise(resolve => setTimeout(resolve, 20));
+                }
+                setStatus(`指令已发送 (${lines.length} 行)`, false);
+                return true;
             }
-        });
 
-        console.log('极简遥控器已启动 (十字方向键)');
-    })();
-</script>
+            // ============================================================
+            // 7. 按钮事件绑定
+            // ============================================================
+            function setupCommandButtons() {
+                document.querySelectorAll('[data-cmd]').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const cmdKey = btn.dataset.cmd;
+                        const content = COMMANDS[cmdKey];
+                        if (content) {
+                            await sendContent(content);
+                        } else {
+                            setStatus('未知指令', true);
+                        }
+                    });
+                });
+            }
+
+            connectBtn.addEventListener('click', scanAndConnect);
+            disconnectBtn.addEventListener('click', async () => {
+                await disconnectBle();
+            });
+
+            // ============================================================
+            // 8. 初始化
+            // ============================================================
+            setConnected(false);
+            setupCommandButtons();
+
+            if (!('bluetooth' in navigator)) {
+                setStatus('浏览器不支持 Web Bluetooth', true);
+                connectBtn.disabled = true;
+            }
+
+            window.addEventListener('beforeunload', () => {
+                if (bleDevice && bleDevice.gatt) {
+                    try { bleDevice.gatt.disconnect(); } catch(e) {}
+                }
+            });
+
+            console.log('极简遥控器已启动 (十字方向键)');
+        })();
+    </script>
 </body>
 </html>
