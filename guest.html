@@ -21,18 +21,18 @@
             padding: 16px;
         }
         .container {
-            max-width: 500px;
+            max-width: 420px;
             width: 100%;
             background: #2d3436;
             border-radius: 32px;
-            padding: 24px 20px 30px;
+            padding: 20px 18px 28px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.6);
         }
         h1 {
-            font-size: 24px;
+            font-size: 22px;
             color: #dfe6e9;
             text-align: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             font-weight: 600;
             letter-spacing: 1px;
         }
@@ -41,16 +41,16 @@
             align-items: center;
             justify-content: space-between;
             background: #3d3f42;
-            padding: 10px 16px;
+            padding: 8px 14px;
             border-radius: 40px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             color: #b2bec3;
-            font-size: 14px;
+            font-size: 13px;
         }
         .status-left {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
         .led {
             width: 12px;
@@ -63,13 +63,13 @@
         .led.connected { background: #27ae60; box-shadow: 0 0 8px #27ae6088; }
         .led.disconnected { background: #e74c3c; }
         .device-name {
-            max-width: 120px;
+            max-width: 100px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
         .status-msg {
-            font-size: 13px;
+            font-size: 12px;
             color: #fdcb6e;
             text-align: right;
             flex: 1;
@@ -78,16 +78,16 @@
         .connect-area {
             display: flex;
             gap: 8px;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
         }
         .connect-area button {
             flex: 1;
-            padding: 12px 0;
+            padding: 10px 0;
             border: none;
             border-radius: 40px;
             background: #0984e3;
             color: white;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             transition: 0.2s;
@@ -97,89 +97,87 @@
         .connect-area button.danger { background: #e74c3c; }
         .connect-area button.secondary { background: #636e72; }
 
-        .grid {
+        /* 十字方向键布局 (3x3 grid) */
+        .dpad {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+            gap: 8px;
             margin-bottom: 12px;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
         }
-        .grid button {
-            padding: 18px 6px;
+        .dpad button {
+            padding: 16px 0;
             border: none;
             border-radius: 16px;
             background: #3d3f42;
             color: #dfe6e9;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.15s;
-            box-shadow: 0 4px 0 #1e1f22;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-        .grid button:active {
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 #1e1f22;
-        }
-        .grid button .icon { font-size: 28px; line-height: 1; }
-        .grid button .label { font-size: 13px; opacity: 0.8; }
-        .grid button.primary { background: #0984e3; }
-        .grid button.success { background: #27ae60; }
-        .grid button.warning { background: #f39c12; }
-        .grid button.danger { background: #e74c3c; }
-        .grid button.purple { background: #6c5ce7; }
-        .grid button.teal { background: #00b894; }
-
-        .row-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 4px;
-        }
-        .row-2 button {
-            padding: 14px 6px;
-            border: none;
-            border-radius: 16px;
-            background: #3d3f42;
-            color: #dfe6e9;
-            font-size: 16px;
-            font-weight: 500;
+            font-size: 28px;
             cursor: pointer;
             transition: 0.15s;
             box-shadow: 0 4px 0 #1e1f22;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            aspect-ratio: 1 / 1;
         }
-        .row-2 button:active {
+        .dpad button:active {
             transform: translateY(2px);
             box-shadow: 0 2px 0 #1e1f22;
         }
-        .row-2 button .icon { font-size: 22px; }
+        .dpad .up { background: #0984e3; }
+        .dpad .down { background: #e67e22; }
+        .dpad .left { background: #f39c12; }
+        .dpad .right { background: #f39c12; }
+        .dpad .stop { background: #e74c3c; font-size: 22px; }
 
-        .footer {
-            margin-top: 18px;
-            font-size: 12px;
-            color: #636e72;
-            text-align: center;
-            border-top: 1px solid #3d3f42;
-            padding-top: 14px;
+        /* 功能按钮区 */
+        .func-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 8px;
         }
+        .func-grid button {
+            padding: 12px 4px;
+            border: none;
+            border-radius: 14px;
+            background: #3d3f42;
+            color: #dfe6e9;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.15s;
+            box-shadow: 0 4px 0 #1e1f22;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .func-grid button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #1e1f22;
+        }
+        .func-grid button .icon { font-size: 22px; }
+        .func-grid button .label { font-size: 11px; opacity: 0.8; }
+        .func-grid button.purple { background: #6c5ce7; }
+        .func-grid button.teal { background: #00b894; }
+        .func-grid button.green { background: #27ae60; }
+        .func-grid button.orange { background: #e67e22; }
+        .func-grid button.gray { background: #636e72; }
+
         .options-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: #3d3f42;
-            padding: 8px 14px;
+            padding: 6px 14px;
             border-radius: 30px;
             margin-top: 12px;
             color: #b2bec3;
-            font-size: 13px;
+            font-size: 12px;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 4px;
         }
         .options-row label {
             display: flex;
@@ -192,8 +190,16 @@
             color: #dfe6e9;
             border: 1px solid #636e72;
             border-radius: 20px;
-            padding: 4px 10px;
+            padding: 3px 8px;
             font-size: 12px;
+        }
+        .footer {
+            margin-top: 14px;
+            font-size: 11px;
+            color: #636e72;
+            text-align: center;
+            border-top: 1px solid #3d3f42;
+            padding-top: 12px;
         }
         .hidden { display: none !important; }
     </style>
@@ -217,46 +223,42 @@
         <button id="disconnectBtn" class="danger hidden">断开</button>
     </div>
 
-    <!-- 方向控制 + 常用动作 (3x3) -->
-    <div class="grid">
-        <button data-cmd="turnleft" class="warning">
-            <span class="icon">↺</span>
-            <span class="label">左转</span>
-        </button>
-        <button data-cmd="crawl" class="primary">
-            <span class="icon">⬆</span>
-            <span class="label">前进</span>
-        </button>
-        <button data-cmd="turnright" class="warning">
-            <span class="icon">↻</span>
-            <span class="label">右转</span>
-        </button>
+    <!-- 十字方向键 -->
+    <div class="dpad">
+        <div></div>                           <!-- 上 -->
+        <button class="up" data-cmd="crawl">⬆</button>
+        <div></div>
 
+        <button class="left" data-cmd="turnleft">⬅</button>  <!-- 左 -->
+        <button class="stop" data-cmd="stop">⏹</button>       <!-- 停止 -->
+        <button class="right" data-cmd="turnright">➡</button> <!-- 右 -->
+
+        <div></div>                           <!-- 下 -->
+        <button class="down" data-cmd="back">⬇</button>
+        <div></div>
+    </div>
+
+    <!-- 功能按钮 -->
+    <div class="func-grid">
         <button data-cmd="tail" class="teal">
             <span class="icon">🦎</span>
-            <span class="label">尾巴摆动</span>
-        </button>
-        <button data-cmd="stop" class="danger">
-            <span class="icon">⏹</span>
-            <span class="label">停止</span>
+            <span class="label">尾巴</span>
         </button>
         <button data-cmd="pswim" class="purple">
             <span class="icon">🐟</span>
-            <span class="label">胸鳍游动</span>
+            <span class="label">胸鳍</span>
         </button>
-
-        <button data-cmd="reset" class="secondary">
+        <button data-cmd="reset" class="orange">
             <span class="icon">🔄</span>
             <span class="label">复位</span>
         </button>
-        <button data-cmd="start" class="success">
+        <button data-cmd="start" class="green">
             <span class="icon">▶</span>
             <span class="label">激活</span>
         </button>
-        <div></div> <!-- 占位 -->
     </div>
 
-    <!-- 选项（保留必要设置） -->
+    <!-- 选项 -->
     <div class="options-row">
         <label><input type="checkbox" id="appendNewline" checked> 自动换行</label>
         <label>写入:
@@ -268,7 +270,7 @@
     </div>
 
     <div class="footer">
-        ⚡ 蓝牙 BLE · 仅搜索 HC-05 · 点击按钮即发送指令
+        ⚡ 蓝牙 BLE · 仅搜索 HC-05 · 单击发送指令
     </div>
 </div>
 
@@ -286,7 +288,7 @@
         const writeType = document.getElementById('writeType');
 
         // ============================================================
-        // 2. 指令定义（与之前完全一致）
+        // 2. 指令定义（新增 back）
         // ============================================================
         const COMMANDS = {
             crawl: `START
@@ -295,10 +297,15 @@ LOOP
 30 150 30 150 45 2.0
 90 90 30 150 45 2.0
 90 90 90 90 45 2.0`,
+            back: `START
+LOOP
+30 150 120 60 45 2
+90 90 120 60 45 2
+90 90 20 160 45 2`,
             tail: `START
 LOOP
-90 90 120 60 65 1.0
-90 90 120 60 25 1.0`,
+90 90 120 60 60 1.0
+90 90 120 60 30 1.0`,
             pswim: `START
 LOOP
 90 90 150 30 45 1
@@ -333,7 +340,6 @@ LOOP
         let bleNotifyListener = null;
         let isConnected = false;
 
-        // 固定 UUID (HC-05 BLE)
         const SERVICE_UUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
         const CHAR_FFE1 = '0000ffe1-0000-1000-8000-00805f9b34fb';
         const CHAR_FFE2 = '0000ffe2-0000-1000-8000-00805f9b34fb';
@@ -370,13 +376,11 @@ LOOP
             }
             try {
                 setStatus('正在扫描 HC-05...', false);
-                // 请求设备，过滤名称
                 const device = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: false,
-                    filters: [{ name: 'HC-05' }],   // 精确匹配
+                    filters: [{ name: 'HC-05' }],
                     optionalServices: [SERVICE_UUID]
                 });
-                // 如果用户选择了，但名称不是 HC-05（理论上不会），但以防万一
                 if (device.name && device.name.toUpperCase() !== 'HC-05') {
                     setStatus('请选择 HC-05 设备', true);
                     return;
@@ -404,7 +408,6 @@ LOOP
                 bleService = await bleServer.getPrimaryService(SERVICE_UUID);
                 const chars = await bleService.getCharacteristics();
 
-                // 查找特征
                 bleRxChar = null;
                 bleTxChar = null;
                 for (const char of chars) {
@@ -417,7 +420,6 @@ LOOP
                     }
                     if (bleRxChar && bleTxChar) break;
                 }
-                // 备选：取第一个通知和第一个写
                 if (!bleRxChar) {
                     for (const char of chars) {
                         if (char.properties.notify || char.properties.indicate) {
@@ -438,12 +440,9 @@ LOOP
                 if (!bleRxChar) setStatus('警告: 未找到通知特征', true);
                 if (!bleTxChar) setStatus('警告: 未找到写入特征', true);
 
-                // 启用通知（可选，但不需要显示，仅保持连接活跃）
                 if (bleRxChar) {
                     await bleRxChar.startNotifications();
-                    bleNotifyListener = (event) => {
-                        // 不处理接收，只维持连接
-                    };
+                    bleNotifyListener = (event) => {};
                     bleRxChar.addEventListener('characteristicvaluechanged', bleNotifyListener);
                 }
 
@@ -518,7 +517,6 @@ LOOP
                     setStatus(`发送失败 (行${i+1}): ${err.message}`, true);
                     return false;
                 }
-                // 微小延时
                 await new Promise(resolve => setTimeout(resolve, 20));
             }
             setStatus(`指令已发送 (${lines.length} 行)`, false);
@@ -526,7 +524,7 @@ LOOP
         }
 
         // ============================================================
-        // 7. 按钮事件绑定
+        // 7. 按钮事件绑定（每个按钮只触发一次 click）
         // ============================================================
         function setupCommandButtons() {
             document.querySelectorAll('[data-cmd]').forEach(btn => {
@@ -561,14 +559,13 @@ LOOP
             connectBtn.disabled = true;
         }
 
-        // 页面关闭时断开
         window.addEventListener('beforeunload', () => {
             if (bleDevice && bleDevice.gatt) {
                 try { bleDevice.gatt.disconnect(); } catch(e) {}
             }
         });
 
-        console.log('极简遥控器已启动');
+        console.log('极简遥控器已启动 (十字方向键)');
     })();
 </script>
 </body>
